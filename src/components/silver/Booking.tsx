@@ -1,10 +1,23 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MapPin, Calendar, Users, Car, ArrowRight } from "lucide-react";
 
 const vehicles = [
   { id: "sedan", name: "Lexus LS 500h — Sedan", rate: 95 },
   { id: "suv", name: "Lexus LX 600 — SUV", rate: 135 },
   { id: "lounge", name: "Lexus LM 350h — Lounge", rate: 175 },
+];
+
+const MOCK_LOCATIONS = [
+  "JFK International Airport (JFK), Queens, NY",
+  "LaGuardia Airport (LGA), Queens, NY",
+  "Newark Liberty International Airport (EWR), Newark, NJ",
+  "Manhattan, New York City, NY",
+  "Brooklyn, New York City, NY",
+  "The Plaza Hotel, Fifth Avenue, NYC",
+  "Central Park, Manhattan, NY",
+  "Grand Central Terminal, Midtown East, NYC",
+  "East Hampton, Long Island, NY",
+  "Greenwich, Connecticut",
 ];
 
 export function Booking() {
@@ -14,6 +27,93 @@ export function Booking() {
   const [time, setTime] = useState("");
   const [vehicle, setVehicle] = useState("sedan");
   const [pax, setPax] = useState(2);
+
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [showPickupSuggestions, setShowPickupSuggestions] = useState(false);
+  const [showDropoffSuggestions, setShowDropoffSuggestions] = useState(false);
+
+  const pickupRef = useRef<HTMLInputElement>(null);
+  const dropoffRef = useRef<HTMLInputElement>(null);
+
+  // Load Google Maps API script dynamically
+  useEffect(() => {
+    const win = window as any;
+    if (win.google?.maps?.places) {
+      setIsLoaded(true);
+      return;
+    }
+
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+    if (!apiKey) {
+      console.warn("VITE_GOOGLE_MAPS_API_KEY is not defined. Google Maps Autocomplete will fall back to local mock suggestions.");
+      return;
+    }
+
+    const scriptId = "google-maps-api-script";
+    let script = document.getElementById(scriptId) as HTMLScriptElement;
+    if (!script) {
+      script = document.createElement("script");
+      script.id = scriptId;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+      script.async = true;
+      script.defer = true;
+      document.body.appendChild(script);
+    }
+
+    const onLoad = () => setIsLoaded(true);
+    script.addEventListener("load", onLoad);
+    return () => {
+      script.removeEventListener("load", onLoad);
+    };
+  }, []);
+
+  // Initialize Google Maps Places Autocomplete
+  useEffect(() => {
+    if (!isLoaded) return;
+    const win = window as any;
+    if (!win.google?.maps?.places) return;
+
+    const options = {
+      types: ["geocode", "establishment"],
+    };
+
+    const pickupAutocomplete = new win.google.maps.places.Autocomplete(
+      pickupRef.current!,
+      options
+    );
+    pickupAutocomplete.addListener("place_changed", () => {
+      const place = pickupAutocomplete.getPlace();
+      setPickup(place.formatted_address || place.name || "");
+    });
+
+    const dropoffAutocomplete = new win.google.maps.places.Autocomplete(
+      dropoffRef.current!,
+      options
+    );
+    dropoffAutocomplete.addListener("place_changed", () => {
+      const place = dropoffAutocomplete.getPlace();
+      setDropoff(place.formatted_address || place.name || "");
+    });
+
+    return () => {
+      win.google?.maps?.event?.clearInstanceListeners(pickupAutocomplete);
+      win.google?.maps?.event?.clearInstanceListeners(dropoffAutocomplete);
+    };
+  }, [isLoaded]);
+
+  const filteredPickupSuggestions = useMemo(() => {
+    if (!pickup.trim()) return [];
+    return MOCK_LOCATIONS.filter((loc) =>
+      loc.toLowerCase().includes(pickup.toLowerCase())
+    );
+  }, [pickup]);
+
+  const filteredDropoffSuggestions = useMemo(() => {
+    if (!dropoff.trim()) return [];
+    return MOCK_LOCATIONS.filter((loc) =>
+      loc.toLowerCase().includes(dropoff.toLowerCase())
+    );
+  }, [dropoff]);
 
   const quote = useMemo(() => {
     const v = vehicles.find((x) => x.id === vehicle);
@@ -47,10 +147,92 @@ export function Booking() {
         >
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <Field icon={MapPin} label="Pickup Location">
-              <input value={pickup} onChange={(e) => setPickup(e.target.value)} placeholder="e.g. JFK Terminal 4" className="luxe-input" />
+              <div className="relative w-full">
+                <input
+                  ref={pickupRef}
+                  value={pickup}
+                  onChange={(e) => {
+                    setPickup(e.target.value);
+                    if (!isLoaded) {
+                      setShowPickupSuggestions(true);
+                    }
+                  }}
+                  onFocus={() => {
+                    if (!isLoaded && pickup.trim().length > 0) {
+                      setShowPickupSuggestions(true);
+                    }
+                  }}
+                  onBlur={() => {
+                    setTimeout(() => setShowPickupSuggestions(false), 200);
+                  }}
+                  placeholder="e.g. JFK Terminal 4"
+                  className="luxe-input text-ellipsis overflow-hidden"
+                />
+                {!isLoaded && showPickupSuggestions && filteredPickupSuggestions.length > 0 && (
+                  <ul className="custom-autocomplete-dropdown">
+                    {filteredPickupSuggestions.map((suggestion) => (
+                      <li
+                        key={suggestion}
+                        onMouseDown={() => {
+                          setPickup(suggestion);
+                          setShowPickupSuggestions(false);
+                        }}
+                        className="custom-autocomplete-item"
+                      >
+                        <MapPin className="h-3.5 w-3.5 shrink-0 text-silver-muted" />
+                        <span className="truncate">{suggestion}</span>
+                      </li>
+                    ))}
+                    <li className="custom-autocomplete-footer">
+                      Demo location (add Google Maps API Key for live search)
+                    </li>
+                  </ul>
+                )}
+              </div>
             </Field>
             <Field icon={MapPin} label="Destination">
-              <input value={dropoff} onChange={(e) => setDropoff(e.target.value)} placeholder="e.g. Manhattan, NYC" className="luxe-input" />
+              <div className="relative w-full">
+                <input
+                  ref={dropoffRef}
+                  value={dropoff}
+                  onChange={(e) => {
+                    setDropoff(e.target.value);
+                    if (!isLoaded) {
+                      setShowDropoffSuggestions(true);
+                    }
+                  }}
+                  onFocus={() => {
+                    if (!isLoaded && dropoff.trim().length > 0) {
+                      setShowDropoffSuggestions(true);
+                    }
+                  }}
+                  onBlur={() => {
+                    setTimeout(() => setShowDropoffSuggestions(false), 200);
+                  }}
+                  placeholder="e.g. Manhattan, NYC"
+                  className="luxe-input text-ellipsis overflow-hidden"
+                />
+                {!isLoaded && showDropoffSuggestions && filteredDropoffSuggestions.length > 0 && (
+                  <ul className="custom-autocomplete-dropdown">
+                    {filteredDropoffSuggestions.map((suggestion) => (
+                      <li
+                        key={suggestion}
+                        onMouseDown={() => {
+                          setDropoff(suggestion);
+                          setShowDropoffSuggestions(false);
+                        }}
+                        className="custom-autocomplete-item"
+                      >
+                        <MapPin className="h-3.5 w-3.5 shrink-0 text-silver-muted" />
+                        <span className="truncate">{suggestion}</span>
+                      </li>
+                    ))}
+                    <li className="custom-autocomplete-footer">
+                      Demo location (add Google Maps API Key for live search)
+                    </li>
+                  </ul>
+                )}
+              </div>
             </Field>
             <Field icon={Calendar} label="Date">
               <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="luxe-input" />
@@ -118,6 +300,87 @@ export function Booking() {
           background: oklch(0.12 0.005 270 / 0.9);
         }
         .luxe-input::placeholder { color: var(--silver-muted); }
+
+        /* Custom Autocomplete Dropdown Styling */
+        .custom-autocomplete-dropdown {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 100%;
+          z-index: 50;
+          margin-top: 0.5rem;
+          max-height: 250px;
+          overflow-y: auto;
+          border-radius: 0.75rem;
+          background: oklch(0.12 0.005 270);
+          border: 1px solid oklch(0.92 0.006 270 / 0.15);
+          box-shadow: var(--shadow-luxe);
+          padding: 0.25rem 0;
+        }
+        .custom-autocomplete-item {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding: 0.75rem 1rem;
+          font-size: 0.85rem;
+          color: var(--foreground);
+          cursor: pointer;
+          transition: background-color 0.2s ease;
+        }
+        .custom-autocomplete-item:hover {
+          background-color: oklch(0.16 0.005 270 / 0.8);
+        }
+        .custom-autocomplete-footer {
+          padding: 0.5rem 1rem 0.25rem 1rem;
+          font-size: 0.65rem;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          color: var(--silver-muted);
+          border-top: 1px solid oklch(0.92 0.006 270 / 0.06);
+          pointer-events: none;
+        }
+
+        /* Google Maps Autocomplete Dropdown Styled Overrides */
+        .pac-container {
+          background-color: oklch(0.12 0.005 270) !important;
+          border: 1px solid oklch(0.92 0.006 270 / 0.15) !important;
+          border-radius: 0.75rem !important;
+          box-shadow: var(--shadow-luxe) !important;
+          font-family: var(--font-sans) !important;
+          margin-top: 4px !important;
+          z-index: 9999 !important;
+          padding: 0.25rem 0 !important;
+        }
+        .pac-item {
+          border-top: 1px solid oklch(0.92 0.006 270 / 0.06) !important;
+          padding: 0.75rem 1rem !important;
+          color: var(--foreground) !important;
+          font-size: 0.85rem !important;
+          cursor: pointer !important;
+          display: flex !important;
+          align-items: center !important;
+          transition: background-color 0.2s ease !important;
+        }
+        .pac-item:hover {
+          background-color: oklch(0.16 0.005 270 / 0.8) !important;
+        }
+        .pac-item-query {
+          font-size: 0.85rem !important;
+          color: var(--foreground) !important;
+          padding-right: 0.25rem !important;
+        }
+        .pac-matched {
+          color: var(--silver-bright) !important;
+          font-weight: 600 !important;
+        }
+        .pac-icon {
+          display: none !important;
+        }
+        .hdpi .pac-logo:after {
+          background-image: none !important;
+          height: 0 !important;
+          padding: 0 !important;
+        }
       `}</style>
     </section>
   );

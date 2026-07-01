@@ -90,21 +90,26 @@ export function Hero() {
           service, day or night.
         </p>
 
-        <div className="mt-12 flex flex-col items-center gap-4 sm:flex-row animate-reveal-up" style={{ animationDelay: "0.3s" }}>
+        <div className="mt-12 flex flex-col items-center gap-6 sm:flex-row animate-reveal-up" style={{ animationDelay: "0.3s" }}>
           <a
             href="#booking"
-            className="btn-luxe hover:btn-luxe-hover group"
+            className="btn-luxe hover:btn-luxe-hover group animate-fade-in"
           >
             Book Your Ride
             <ArrowRight className="h-4 w-4 transition-transform duration-500 group-hover:translate-x-1" />
           </a>
+
+          <div
+            className={`text-red-500 transition-opacity duration-500 ${
+              y > 50 ? "opacity-0 pointer-events-none" : "opacity-100"
+            }`}
+          >
+            <ChevronDown className="h-5 w-5 animate-float-slow" />
+          </div>
+
           <a href="#fleet" className="btn-ghost-luxe hover:border-silver hover:text-white">
             View Fleet
           </a>
-        </div>
-
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 animate-float-slow text-silver-muted">
-          <ChevronDown className="h-5 w-5" />
         </div>
       </div>
     </section>

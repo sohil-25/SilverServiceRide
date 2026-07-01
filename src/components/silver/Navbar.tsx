@@ -6,7 +6,6 @@ const links = [
   { href: "#fleet", label: "Fleet" },
   { href: "#services", label: "Services" },
   { href: "#why", label: "Why Us" },
-  { href: "#booking", label: "Book" },
   { href: "#contact", label: "Contact" },
 ];
 
@@ -23,14 +22,12 @@ export function Navbar() {
 
   return (
     <header
-      className={`fixed inset-x-0 top-0 z-50 transition-all duration-700 ${
-        scrolled ? "py-3" : "py-6"
-      }`}
+      className={`fixed inset-x-0 top-0 z-50 transition-all duration-700 ${scrolled ? "py-3" : "py-6"
+        }`}
     >
       <div
-        className={`mx-auto flex max-w-7xl items-center justify-between px-6 transition-all duration-700 ${
-          scrolled ? "glass-panel rounded-full px-6 py-3" : ""
-        }`}
+        className={`mx-auto flex max-w-7xl items-center justify-between px-6 transition-all duration-700 ${scrolled ? "glass-panel rounded-full px-6 py-3" : ""
+          }`}
       >
         <a href="#top" className="shrink-0">
           <Logo />
@@ -49,13 +46,21 @@ export function Navbar() {
           ))}
         </nav>
 
-        <a
-          href="tel:+18005550199"
-          className="hidden items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-silver-bright transition hover:text-white md:inline-flex"
-        >
-          <Phone className="h-3.5 w-3.5" />
-          +1 800 555 0199
-        </a>
+        <div className="hidden items-center gap-6 md:flex">
+          <a
+            href="tel:+18005550199"
+            className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-silver-bright transition hover:text-white"
+          >
+            <Phone className="h-3.5 w-3.5" />
+            +1 800 555 0199
+          </a>
+          <a
+            href="#booking"
+            className="inline-flex items-center justify-center rounded-full border border-silver/30 bg-transparent px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-silver-bright transition-all duration-300 hover:border-silver-bright hover:bg-silver/10 hover:text-white"
+          >
+            Book Ride
+          </a>
+        </div>
 
         <button
           onClick={() => setOpen((o) => !o)}
@@ -79,8 +84,20 @@ export function Navbar() {
                 {l.label}
               </a>
             ))}
-            <a href="tel:+18005550199" className="text-xs uppercase tracking-[0.3em] text-silver">
+            <hr className="border-t border-border/30 my-1" />
+            <a
+              href="tel:+18005550199"
+              className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-silver-bright"
+            >
+              <Phone className="h-3.5 w-3.5" />
               +1 800 555 0199
+            </a>
+            <a
+              href="#booking"
+              onClick={() => setOpen(false)}
+              className="mt-2 inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-silver-bright via-silver to-silver-bright py-3 text-center text-xs font-semibold uppercase tracking-[0.25em] text-onyx shadow-md transition hover:opacity-90"
+            >
+              Book Ride
             </a>
           </nav>
         </div>
